@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -11,7 +10,7 @@ namespace DropBoxLoadBalancer.Infrastructure
     public class FileTcpServer
     {
         private TcpListener tcpListenre;
-        private StringBuilder path = new StringBuilder(@"C:\server");
+        public StringBuilder path = new StringBuilder(@"C:\server");
         private bool idle = true;
         public FileTcpServer(int _port)
         {
@@ -24,7 +23,7 @@ namespace DropBoxLoadBalancer.Infrastructure
             }
         }
 
-        public async Task RunAsync(TcpClient client)
+        public async Task RunAsync(TcpClient client, Action callback)
         {
             var task = new TaskFactory().StartNew(() =>
             {
@@ -34,10 +33,10 @@ namespace DropBoxLoadBalancer.Infrastructure
                 fileData = reader.ReadBytes(1024);
                 File.WriteAllBytes(path.ToString() + "\\" + "file.txt", fileData);
                 Console.WriteLine("Client readed");
-                Thread.Sleep(TimeSpan.FromMinutes(10));
+                Thread.Sleep(TimeSpan.FromMinutes(1));
             }).ContinueWith((x)=>
             {
-                
+                callback();
                 idle = true;
             });
            

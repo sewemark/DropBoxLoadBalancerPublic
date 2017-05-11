@@ -8,7 +8,7 @@ namespace DropBoxLoadBalancer
         static void Main(string[] args)
         {
             Console.WriteLine("Server starting .... ");
-            LoadBalancerTcpServer server = new LoadBalancerTcpServer(4999,new ClientConnectionHandler());
+            LoadBalancerTcpServer server = new LoadBalancerTcpServer(new ClientConnectionHandler(),4999);
             server.RunAsync();
             Console.ReadKey();
 
