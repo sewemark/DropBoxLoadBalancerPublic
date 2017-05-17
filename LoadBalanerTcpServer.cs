@@ -13,6 +13,7 @@ namespace DropBoxLoadBalancer.Infrastructure
     {
         private TcpListener tcpListenre;
         private IClientConnectionHandler connectionHandler;
+        private List<TcpClient> connectedClients = new List<TcpClient>();
         public LoadBalancerTcpServer(IClientConnectionHandler _connectionHandler, int _port)
         {
             this.connectionHandler = _connectionHandler;
@@ -25,6 +26,7 @@ namespace DropBoxLoadBalancer.Infrastructure
             while (true)
             {
                 TcpClient client = await tcpListenre.AcceptTcpClientAsync();
+                connectedClients.Add(client);
                 await connectionHandler.Handle(client);
             }
         }

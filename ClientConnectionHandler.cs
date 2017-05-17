@@ -20,15 +20,17 @@ namespace DropBoxLoadBalancer.Infrastructure
         List<Task> clientTasks = new List<Task>();
         List<FileTcpServer> servers = new List<FileTcpServer>();
         List<TcpClient> pendingClients = new List<TcpClient>();
+        List<TcpClient> connectedClients = new List<TcpClient>();
         IObservable<FileTcpServer> observableServers;
         IObservable<TcpClient> observablClient;
         Subject<TcpClient> clientSubjectss = new Subject<TcpClient>();
         Subject<FileTcpServer> clientServer = new Subject<FileTcpServer>();
+
         public ClientConnectionHandler()
         {
-            for(int i=0;i<1;i++)
+            for(int i=0;i<5;i++)
             {
-                servers.Add(new FileTcpServer(5000 + i));
+                servers.Add(new FileTcpServer(5000 + i, connectedClients));
 
             }
             observableServers = servers.ToObservable().Concat(clientServer);
@@ -50,24 +52,23 @@ namespace DropBoxLoadBalancer.Infrastructure
         public async Task Handle(TcpClient client)
         {
             //Check for idle server;
+            connectedClients.Add(client);
             var idleServer = servers.Find(x => x.IsIdle());
             if(idleServer != null)
             {
                 servers.Remove(idleServer);
                 await idleServer.RunAsync(client,()=> OnNextEmptyServer(idleServer));
-               
             }
             else
             {
                 pendingClients.Add(client);
+
             }
             
         }
 
         public void OnNextEmptyServer(FileTcpServer idleServer)
         {
-
-
             clientServer.OnNext(idleServer);
         }
     }
