@@ -5,7 +5,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using System.Linq;
-
+using System;
 
 namespace DropBoxLoadBalancer.Infrastructure
 {
@@ -20,14 +20,14 @@ namespace DropBoxLoadBalancer.Infrastructure
             tcpListenre = new TcpListener(IPAddress.Any, _port);
         }
 
-        public async Task RunAsync()
+        public async Task RunAsync(List<Tuple<string, int, TcpClient>> usersDict)
         {
             tcpListenre.Start();
             while (true)
             {
                 TcpClient client = await tcpListenre.AcceptTcpClientAsync();
                 connectedClients.Add(client);
-                await connectionHandler.Handle(client);
+                await connectionHandler.Handle(client,usersDict);
             }
         }
 

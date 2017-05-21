@@ -11,7 +11,7 @@ namespace DropBoxLoadBalancer.Infrastructure
 
     public interface IClientConnectionHandler
     {
-        Task Handle(TcpClient clients);
+        Task Handle(TcpClient clients, List<Tuple<string, int, TcpClient>> usersDict);
     }
 
     public class ClientConnectionHandler : IClientConnectionHandler
@@ -22,13 +22,12 @@ namespace DropBoxLoadBalancer.Infrastructure
         List<TcpClient> pendingClients = new List<TcpClient>();
         List<TcpClient> connectedClients = new List<TcpClient>();
         IObservable<FileTcpServer> observableServers;
-        IObservable<TcpClient> observablClient;
         Subject<TcpClient> clientSubjectss = new Subject<TcpClient>();
         Subject<FileTcpServer> clientServer = new Subject<FileTcpServer>();
 
         public ClientConnectionHandler()
         {
-            for(int i=0;i<5;i++)
+            for(int i=0;i<NUM_OF_SERVERS;i++)
             {
                 servers.Add(new FileTcpServer(5000 + i, connectedClients));
 
@@ -49,20 +48,18 @@ namespace DropBoxLoadBalancer.Infrastructure
             }
         }
 
-        public async Task Handle(TcpClient client)
+        public async Task Handle(TcpClient client, List<Tuple<string,int, TcpClient>> usersDict)
         {
-            //Check for idle server;
             connectedClients.Add(client);
             var idleServer = servers.Find(x => x.IsIdle());
             if(idleServer != null)
             {
                 servers.Remove(idleServer);
-                await idleServer.RunAsync(client,()=> OnNextEmptyServer(idleServer));
+                idleServer.Run(client,()=> OnNextEmptyServer(idleServer), usersDict);
             }
             else
             {
                 pendingClients.Add(client);
-
             }
             
         }

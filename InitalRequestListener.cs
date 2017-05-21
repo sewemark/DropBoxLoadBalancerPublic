@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -20,13 +21,15 @@ namespace DropBoxLoadBalancer.Infrastructure
             tcpListenre = new TcpListener(IPAddress.Any, _port);
         }
 
-        public async Task RunAsync()
+        public async Task RunAsync(List<Tuple<string,int, TcpClient>> usersDict)
         {
             tcpListenre.Start();
             while (true)
             {
+                Console.WriteLine("Wating....");
                 TcpClient client = await tcpListenre.AcceptTcpClientAsync();
-                await connectionHandler.Handle(client);
+                var address = ((IPEndPoint)client.Client.RemoteEndPoint);
+                await connectionHandler.Handle(client, address,usersDict);
             }
         }
     }

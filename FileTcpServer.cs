@@ -1,6 +1,9 @@
-﻿using System;
+﻿using DropBoxLoadBalancer.Infrastructure.Infrastructure;
+using DropBoxLoadBalancer.Persistence;
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -27,44 +30,60 @@ namespace DropBoxLoadBalancer.Infrastructure
             }
         }
 
-        public async Task RunAsync(TcpClient client, Action callback)
+        public void Run(TcpClient client, Action callback, List<Tuple<string, int, TcpClient>> usersDict)
         {
-            byte[] fileData = new byte[0];
-               var task = new TaskFactory().StartNew(() =>
-            {
-                idle = false;
-                BinaryReader reader = new BinaryReader(client.GetStream(), Encoding.ASCII);
-                fileData = null;
-                fileData = reader.ReadBytes(1024);
-                File.WriteAllBytes(path.ToString() + "\\" + "file.txt", fileData);
-                Console.WriteLine("Client readed");
-                
-            }).ContinueWith((x)=>
-            {
-                callback();
-                idle = true;
-                connectedClients.ForEach(async connectedClient =>
-                {
-                    Console.WriteLine("Resending");
-                    TcpClient tempClient = new TcpClient();
-                    await tempClient.ConnectAsync("127.0.0.1", 4998);
-                    BinaryWriter bw = new BinaryWriter(tempClient.GetStream(), System.Text.Encoding.ASCII, false);
-                    FileStream fs = new FileStream(@"C:\PwJs\python.txt", FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    byte[] data = new byte[1024];
-                    fs.Read(data, 0, 1024);
-                    bw.Write(data);
-                    bw.Dispose();
-                    fs.Dispose();
-                    client.Dispose();
-                    // connectedClient.Client.SendTo(fileData, new IPEndPoint(IPAddress.Parse("127.0.0.1"), 4998));
-                });
+            byte[] fileData;
+            string userName = "";
+            var task = new TaskFactory().StartNew(() =>
+             {
+                 idle = false;
+                 fileData = GetNetworkDate(client);
+                 FileModel recievedFile = Serializers.DeserializeObject<FileModel>(fileData);
+                 userName = recievedFile.UserName;
+                 File.WriteAllBytes(path.ToString() + "\\" + recievedFile.FileName, recievedFile.Content);
+                 Console.WriteLine("Client readed");
+                 return recievedFile;
 
-            });
-            
+             }).ContinueWith((x) =>
+             {
+                 callback();
+                 idle = true;
+                 var otherClientByUserName = usersDict.Where(z => z.Item1 == userName)
+                 .ToList();
+                 otherClientByUserName.ForEach(connectedClient =>
+                 {
+                     Console.WriteLine("Resending" + connectedClient.Item1);
+                     TcpClient tempClient = new TcpClient();
+                     tempClient.ConnectAsync("127.0.0.1", connectedClient.Item2 + 1);
+                     byte[] recievedFile = Serializers.SerializeObject<FileModel>(x.Result);
+                     tempClient.Client.Send(recievedFile);
+                     tempClient.Dispose();
+                 });
+
+             });
+
         }
         public bool IsIdle()
         {
             return this.idle;
+        }
+
+        public byte[] GetNetworkDate(TcpClient client)
+        {
+            using (NetworkStream stream = client.GetStream())
+            {
+                byte[] data = new byte[1024];
+
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    int numOfBytes = 0;
+                    while ((numOfBytes = stream.Read(data, 0, data.Length)) > 0)
+                    {
+                        ms.Write(data, 0, numOfBytes);
+                    }
+                    return ms.ToArray();
+                }
+            }
         }
     }
 }
