@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using DropBoxLoadBalancer.Persistence;
 
 namespace DropBoxLoadBalancer.Infrastructure
 {
@@ -25,11 +26,11 @@ namespace DropBoxLoadBalancer.Infrastructure
         Subject<TcpClient> clientSubjectss = new Subject<TcpClient>();
         Subject<FileTcpServer> clientServer = new Subject<FileTcpServer>();
 
-        public ClientConnectionHandler()
+        public ClientConnectionHandler(DbHandler dbHandler )
         {
             for(int i=0;i<NUM_OF_SERVERS;i++)
             {
-                servers.Add(new FileTcpServer(5000 + i, connectedClients));
+                servers.Add(new FileTcpServer(5000 + i, connectedClients,dbHandler));
 
             }
             observableServers = servers.ToObservable().Concat(clientServer);

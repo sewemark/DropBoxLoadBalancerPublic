@@ -21,11 +21,13 @@ namespace DropBoxLoadBalancer.Persistence
 
         public List<DbModel> GetDiff(InitRequestModel requestModel)
         {
-            XElement xelement = XElement.Load(configuration.GetDbFolder());
             var result = Serializers.DeSerializeObjectToFile<Db>(configuration.GetDbFolder());
 
             var rr = from dbmodel in result.Entries
-                     where dbmodel.Files.Except(requestModel.Files).Count() > 0
+                     where
+                     //dbmodel.UserName == requestModel.UserName && 
+                     
+                     dbmodel.Files.Except(requestModel.Files).Count() > 0
                      select dbmodel;
             return rr.ToList();
            
@@ -38,6 +40,18 @@ namespace DropBoxLoadBalancer.Persistence
 
             Db db = new Db();
             Serializers.SerializeObjectToFile<Db>(db, configuration.GetDbFolder());
+        }
+
+        public void AddFile(FileModel recievedFile,string serverName)
+        {
+            var result = Serializers.DeSerializeObjectToFile<Db>(configuration.GetDbFolder());
+            result.Entries.Add(new DbModel()
+            {
+                Files = new List<string>() { recievedFile.FileName.Substring(1) },
+                SerwerName = serverName.Substring(3),
+                UserName = recievedFile.UserName
+            });
+            Serializers.SerializeObjectToFile<Db>(result, configuration.GetDbFolder());
         }
     }
 }

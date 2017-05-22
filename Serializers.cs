@@ -82,7 +82,6 @@ namespace DropBoxLoadBalancer.Infrastructure.Infrastructure
             if (string.IsNullOrEmpty(fileName)) { return default(T); }
 
             T objectOut = default(T);
-
             try
             {
                 XmlDocument xmlDocument = new XmlDocument();
@@ -106,6 +105,7 @@ namespace DropBoxLoadBalancer.Infrastructure.Infrastructure
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.ToString());
                 //Log exception here
             }
 

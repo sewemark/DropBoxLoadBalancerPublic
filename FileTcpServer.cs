@@ -18,12 +18,14 @@ namespace DropBoxLoadBalancer.Infrastructure
         public StringBuilder path = new StringBuilder(@"C:\server");
         List<TcpClient> connectedClients;
         private bool idle = true;
-        public FileTcpServer(int _port, List<TcpClient> _connectedClients)
+        private DbHandler dbHandler;
+        public FileTcpServer(int _port, List<TcpClient> _connectedClients,DbHandler _dbHandler)
         {
             tcpListenre = new TcpListener(IPAddress.Any, _port);
             tcpListenre.Start();
             connectedClients = _connectedClients;
             path.Append(_port.ToString());
+            dbHandler = _dbHandler;
             if (!Directory.Exists(path.ToString()))
             {
                 Directory.CreateDirectory(path.ToString());
@@ -42,6 +44,7 @@ namespace DropBoxLoadBalancer.Infrastructure
                  userName = recievedFile.UserName;
                  File.WriteAllBytes(path.ToString() + "\\" + recievedFile.FileName, recievedFile.Content);
                  Console.WriteLine("Client readed");
+                 dbHandler.AddFile(recievedFile, path.ToString());
                  return recievedFile;
 
              }).ContinueWith((x) =>
