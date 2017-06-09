@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+
 
 namespace DropBoxLoadBalancer.Infrastructure
 {
@@ -12,8 +11,6 @@ namespace DropBoxLoadBalancer.Infrastructure
     {
         private TcpListener tcpListenre;
         private IClientInitialRequestHandler connectionHandler;
-        private ClientInitialRequestHandler clientInitialRequestHandler;
-        private int port;
 
         public InitalRequestListener(IClientInitialRequestHandler _connectionHandler, int _port)
         {
@@ -26,7 +23,7 @@ namespace DropBoxLoadBalancer.Infrastructure
             tcpListenre.Start();
             while (true)
             {
-                Console.WriteLine("Wating....");
+                Console.WriteLine("Wating for Initial Requests....");
                 TcpClient client = await tcpListenre.AcceptTcpClientAsync();
                 var address = ((IPEndPoint)client.Client.RemoteEndPoint);
                 await connectionHandler.Handle(client, address,usersDict);

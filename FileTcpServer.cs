@@ -1,5 +1,4 @@
-﻿using DropBoxLoadBalancer.Infrastructure.Infrastructure;
-using DropBoxLoadBalancer.Persistence;
+﻿using DropBoxLoadBalancer.Persistence;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,17 +14,21 @@ namespace DropBoxLoadBalancer.Infrastructure
     public class FileTcpServer
     {
         private TcpListener tcpListenre;
-        public StringBuilder path = new StringBuilder(@"C:\server");
+       
         List<TcpClient> connectedClients;
         private bool idle = true;
         private DbHandler dbHandler;
-        public FileTcpServer(int _port, List<TcpClient> _connectedClients,DbHandler _dbHandler)
+        private NetworkInfrastructure networkInfrastructure;
+        public StringBuilder path = new StringBuilder(@"C:\server");
+        public int port;
+        public FileTcpServer(int _port, List<TcpClient> _connectedClients, NetworkInfrastructure _networkInfrastructure)
         {
             tcpListenre = new TcpListener(IPAddress.Any, _port);
             tcpListenre.Start();
             connectedClients = _connectedClients;
+            networkInfrastructure = _networkInfrastructure;
             path.Append(_port.ToString());
-            dbHandler = _dbHandler;
+            
             if (!Directory.Exists(path.ToString()))
             {
                 Directory.CreateDirectory(path.ToString());
@@ -34,59 +37,33 @@ namespace DropBoxLoadBalancer.Infrastructure
 
         public void Run(TcpClient client, Action callback, List<Tuple<string, int, TcpClient>> usersDict)
         {
-            byte[] fileData;
-            string userName = "";
-            var task = new TaskFactory().StartNew(() =>
+            Thread.Sleep(5000);
+            var task = new TaskFactory().StartNew( () =>
              {
+                  
                  idle = false;
-                 fileData = GetNetworkDate(client);
-                 FileModel recievedFile = Serializers.DeserializeObject<FileModel>(fileData);
-                 userName = recievedFile.UserName;
-                 File.WriteAllBytes(path.ToString() + "\\" + recievedFile.FileName, recievedFile.Content);
-                 Console.WriteLine("Client readed");
-                 dbHandler.AddFile(recievedFile, path.ToString());
-                 return recievedFile;
+                 return networkInfrastructure.Save(client, path.ToString());
 
              }).ContinueWith((x) =>
              {
                  callback();
                  idle = true;
-                 var otherClientByUserName = usersDict.Where(z => z.Item1 == userName)
-                 .ToList();
+
+                 Console.WriteLine("Empting server " + port.ToString());
+                 var otherClientByUserName = usersDict.Where(z => z.Item1 == x.Result.UserName)
+                                             .ToList();
                  otherClientByUserName.ForEach(connectedClient =>
                  {
                      Console.WriteLine("Resending" + connectedClient.Item1);
-                     TcpClient tempClient = new TcpClient();
-                     tempClient.ConnectAsync("127.0.0.1", connectedClient.Item2 + 1);
-                     byte[] recievedFile = Serializers.SerializeObject<FileModel>(x.Result);
-                     tempClient.Client.Send(recievedFile);
-                     tempClient.Dispose();
+                     networkInfrastructure.SendFile("127.0.0.1", connectedClient.Item2 + 1, x.Result);
                  });
-
+               
              });
-
         }
+
         public bool IsIdle()
         {
             return this.idle;
-        }
-
-        public byte[] GetNetworkDate(TcpClient client)
-        {
-            using (NetworkStream stream = client.GetStream())
-            {
-                byte[] data = new byte[1024];
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    int numOfBytes = 0;
-                    while ((numOfBytes = stream.Read(data, 0, data.Length)) > 0)
-                    {
-                        ms.Write(data, 0, numOfBytes);
-                    }
-                    return ms.ToArray();
-                }
-            }
         }
     }
 }
